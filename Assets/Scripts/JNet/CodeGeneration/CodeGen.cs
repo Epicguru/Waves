@@ -472,7 +472,17 @@ namespace JNetworking.CodeGeneration
             string path = Path.Combine(Application.dataPath, "NetcodeAutogen");
             Debug.Log(path);
 
-            Directory.Delete(path, true);
+            if(Directory.Exists(path))
+                Directory.Delete(path, true);
+
+            string filePath = Path.Combine(Application.dataPath, "NetcodeAutogen.meta");
+
+            if (File.Exists(filePath))
+                File.Delete(filePath);
+
+            UnityEditor.AssetDatabase.Refresh(UnityEditor.ImportAssetOptions.Default);
+
+            Debug.Log("Cleared output folder.");
         }
 
         [UnityEditor.MenuItem("Netcode/Settings")]

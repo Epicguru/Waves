@@ -20,6 +20,11 @@ public class NetManager : NetBehaviour
         Spawnables.NetRegisterAll();
     }
 
+
+    private void OnDestroy()
+    {
+        JNet.Dispose();
+    }
     private void StartClient()
     {
         JNet.StartClient();
@@ -75,8 +80,8 @@ public class NetManager : NetBehaviour
 
             player.Character = character;
 
-            // Spawn, without authority.
-            JNet.Spawn(character);
+            // Spawn with authority.
+            JNet.Spawn(character, client.Connection);
         };
         JNet.GetServer().UponDisconnection = (client, reason) =>
         {

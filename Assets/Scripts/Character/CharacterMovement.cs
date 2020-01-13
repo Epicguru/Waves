@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
+[RequireComponent(typeof(Character))]
 public class CharacterMovement : MonoBehaviour
 {
     public Rigidbody2D Body
@@ -13,6 +14,16 @@ public class CharacterMovement : MonoBehaviour
         }
     }
     private Rigidbody2D _body;
+    public Character Character
+    {
+        get
+        {
+            if (_char == null)
+                _char = GetComponent<Character>();
+            return _char;
+        }
+    }
+    private Character _char;
 
     public Vector2 InputDirection;
     public float Speed = 4;
@@ -28,14 +39,14 @@ public class CharacterMovement : MonoBehaviour
 
     private void Update()
     {
-        FeetAnim.SetBool("Move", InputDirection.sqrMagnitude >= 0.2f);
-        FeetAnim.SetFloat("Speed", Speed * SpeedAnimScale);
+        // Runs on all clients.
 
-        Vector2 motion = InputDirection.normalized;
-        float forwardAmount = Vector2.Dot(transform.right, motion);
-        float rightAmount = Vector2.Dot(-transform.up, motion);
+        FeetAnim.SetBool("Move", IsMoving);
+        FeetAnim.SetFloat("Speed", GetVelocity().magnitude * SpeedAnimScale);
 
-        FeetAnim.SetLayerWeight(1, Mathf.Abs(rightAmount));
+        Vector2 rv = GetNormalizedVelocityInDirection(-transform.up);
+
+        FeetAnim.SetLayerWeight(1, rv.magnitude);
     }
 
     public Vector2 GetForwardDirection()
@@ -60,6 +71,13 @@ public class CharacterMovement : MonoBehaviour
         return Vector2.Dot(GetVelocity(), normalized) * normalized;
     }
 
+    public Vector2 GetNormalizedVelocityInDirection(Vector2 direction)
+    {
+        Vector2 normalized = direction.sqrMagnitude == 1f ? direction : direction.normalized;
+
+        return Vector2.Dot(GetVelocity().normalized, normalized) * normalized;
+    }
+
     public float GetSpeedInDirection(Vector2 direction)
     {
         Vector2 normalized = direction.sqrMagnitude == 1f ? direction : direction.normalized;
@@ -75,25 +93,38 @@ public class CharacterMovement : MonoBehaviour
 
     private void FixedUpdate()
     {
-        float upSpeed = GetVelocity().y;
-        float rightSpeed = GetVelocity().x;
+        // Only runs on the server, or if we have local ownership to do predictions on.
+        if (!Character.IsServer)
+            return;
 
-        var input = InputDirection.normalized * Speed;
+        bool forceMode = false;
 
-        float targetUp = input.y;
-        float targetRight = input.x;
+        if (forceMode)
+        {
+            float upSpeed = GetVelocity().y;
+            float rightSpeed = GetVelocity().x;
 
-        float upDiff = targetUp - upSpeed;
-        float rightDiff = targetRight - rightSpeed;
+            var input = InputDirection.normalized * Speed;
 
-        const float SPEED_SENS = 1f;
+            float targetUp = input.y;
+            float targetRight = input.x;
 
-        float forceX = Mathf.Clamp(rightDiff / SPEED_SENS, -1f, 1f) * MaxForce;
-        float forceY = Mathf.Clamp(upDiff / SPEED_SENS, -1f, 1f) * MaxForce;
+            float upDiff = targetUp - upSpeed;
+            float rightDiff = targetRight - rightSpeed;
 
-        Vector2 force = new Vector2(forceX, forceY);
-        force = force.ClampToMagnitude(MaxForce);
+            const float SPEED_SENS = 1f;
 
-        Body.AddForce(force);
+            float forceX = Mathf.Clamp(rightDiff / SPEED_SENS, -1f, 1f) * MaxForce;
+            float forceY = Mathf.Clamp(upDiff / SPEED_SENS, -1f, 1f) * MaxForce;
+
+            Vector2 force = new Vector2(forceX, forceY);
+            force = force.ClampToMagnitude(MaxForce);
+
+            Body.AddForce(force);
+        }
+        else
+        {
+            Body.velocity = InputDirection.normalized * Speed;
+        }        
     }
 }

@@ -267,7 +267,7 @@ MonoBehaviour:
   - {x: -0.4796177, y: -0.17091179, z: 0}
   m_ShapePathHash: 396580822
   m_Mesh: {fileID: 0}
-  m_InstanceId: 15860
+  m_InstanceId: 40276
 --- !u!1 &5096844399794015455
 GameObject:
   m_ObjectHideFlags: 0
@@ -401,7 +401,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Name: James
-  IsPlayer: 1
 --- !u!114 &5096844400294508736
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -416,7 +415,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   InputDirection: {x: 0, y: 0}
   Speed: 6
-  MaxForce: 4000
+  MaxForce: 6000
   FeetAnim: {fileID: 5096844399144660033}
   SpeedAnimScale: 0.25
 --- !u!114 &5096844400294508798
@@ -431,6 +430,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4e5035d974815a2478c73d736375d889, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  LatestInput: {x: 0, y: 0}
 --- !u!114 &5096844400294508737
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -492,7 +492,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e23d43253c92984297eda43a188c792, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _prefabID: 0
+  _prefabID: 1
 --- !u!114 &5096844400294508797
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -507,8 +507,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ParentNetID: 0
   ParentNodeID: 0
-  SendRate: 10
+  SendRate: 16
   SyncRotation: 1
+  ClientPredictionMode: 0
+  SnapDistance: 1.5
   Curve:
     serializedVersion: 2
     m_Curve:
@@ -814,7 +816,7 @@ PrefabInstance:
     - target: {fileID: 1624724944245375834, guid: 9e63932cf8d021541b7186f50fd9323b,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1624724944245375846, guid: 9e63932cf8d021541b7186f50fd9323b,
         type: 3}

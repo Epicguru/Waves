@@ -1,8 +1,9 @@
 ﻿
+using JNetworking;
 using UnityEngine;
 
 [RequireComponent(typeof(Character))]
-public class PlayerMovementInput : MonoBehaviour
+public class PlayerMovementInput : NetBehaviour
 {
     public Character Character
     {
@@ -15,12 +16,34 @@ public class PlayerMovementInput : MonoBehaviour
     }
     private Character _char;
 
+    public Vector2 LatestInput;
+    private Vector2 lastSent;
+
     private void Update()
     {
-        // URGTODO replace with new input system.
         var move = Character.Movement;
 
+        if (HasLocalOwnership)
+        {
+            LatestInput = CollectInput();
+            if (!IsServer)
+            {
+                if(LatestInput != lastSent)
+                {
+                    InvokeCMD("CmdSendInput", LatestInput);
+                    lastSent = LatestInput;
+                }
+            }
+        }
+
+        move.InputDirection = LatestInput;
+    }
+
+    private Vector2 CollectInput()
+    {
         Vector2 dir = Vector2.zero;
+
+        // URGTODO replace with new input system.
         if (Input.GetKey(KeyCode.A))
             dir.x -= 1f;
         if (Input.GetKey(KeyCode.D))
@@ -30,7 +53,13 @@ public class PlayerMovementInput : MonoBehaviour
         if (Input.GetKey(KeyCode.S))
             dir.y -= 1f;
 
-        move.InputDirection = dir;
+        return dir;
+    }
+
+    [Cmd]
+    private void CmdSendInput(Vector2 dir)
+    {
+        this.LatestInput = dir;
     }
 }
 

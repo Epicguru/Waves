@@ -1,6 +1,4 @@
-﻿
-using JNetworking;
-using Lidgren.Network;
+﻿using Lidgren.Network;
 using UnityEngine;
 
 namespace JNetworking
@@ -11,6 +9,10 @@ namespace JNetworking
         [Range(0f, 60f)]
         public float SendRate = 10f;
         public bool SyncRotation = false;
+
+        [Header("Client Prediction Mode")]
+        public bool ClientPredictionMode = false;
+        public float SnapDistance = 1.5f;
 
         [Header("Interpolation")]
         public AnimationCurve Curve = CreateDefaultCurve();
@@ -98,6 +100,24 @@ namespace JNetworking
             // Don't do anything if already on the server.
             if (IsServer)
                 return;
+
+            // Client 'prediction' mode just allows the client to move freely, but when the client desyncs from the server state the client is moved back to where the server tells it to.
+            if (ClientPredictionMode && HasLocalOwnership)
+            {
+                // Only enforces position: TODO rotation.
+                Vector3 currentPos = transform.position;
+                Vector3 serverPos = newPos;
+
+                float sqrDst = (currentPos - serverPos).sqrMagnitude;
+                if(sqrDst > SnapDistance)
+                {
+                    // Snap!
+                    CurrentPos = serverPos;
+                    CurrentAngle = newRot;
+                }
+
+                return;
+            }
 
             // Interpolate to the position that the server sends...
             float interval = SendRate == 0f ? 0f : 1f / SendRate;

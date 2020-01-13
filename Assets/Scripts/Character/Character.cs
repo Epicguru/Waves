@@ -41,4 +41,12 @@ public class Character : NetBehaviour
 
     [SyncVar]
     public NetRef PlayerNetRef;
+
+    private void Start()
+    {
+        if (IsPlayer && HasLocalOwnership)
+        {
+            Camera.main.GetComponent<CameraFollow>().Target = this.GetComponent<Rigidbody2D>();
+        }
+    }
 }

@@ -1,0 +1,48 @@
+
+// Auto generated class. Do not modify or include in version control.
+
+using JNetworking;
+namespace {0}
+{{
+	[JNetworking.CodeGeneration.GeneratedTarget(typeof({3}))]
+	public sealed class {1} : JNetworking.CodeGeneration.JNetGeneratedBehaviour
+	{{
+		public {1}()
+		{{
+			base.SyncVarCount = {7};
+{8}
+		}}
+		{2}
+
+		public override void Update(JNetworking.NetBehaviour t)
+		{{
+			{3} target = t as {3};
+			// Check current values vs last sent values, and update the dirty state.
+{4}
+		}}
+		
+		public override void Serialize(JNetworking.NetBehaviour t, Lidgren.Network.NetOutgoingMessage msg, bool first)
+		{{
+			{3} target = t as {3};
+
+			// Write all sync vars.
+{5}
+			// No longer net dirty.
+			NetDirty = false;
+		}}
+
+		public override void Deserialize(JNetworking.NetBehaviour t, Lidgren.Network.NetIncomingMessage msg, bool first)
+		{{
+			{3} target = t as {3};
+
+			// Read all sync vars.
+{6}
+		}}
+	}}
+}}
+
+^
+		private {0} {1};
+^
+			if (target.{0} != {1})
+				NetDirty = true;

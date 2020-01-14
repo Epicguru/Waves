@@ -415,6 +415,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1bbf9dfc44598e4bb8c6b552f776cd1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  syncMode: 0
+  syncInterval: 0.1
   InputDirection: {x: 0, y: 0}
   Speed: 6
   MaxForce: 6000
@@ -446,6 +448,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e2dff32a5e389a4c865e139f6da409c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  syncMode: 0
+  syncInterval: 0.1
 --- !u!58 &5096844400294508739
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -511,9 +515,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   syncMode: 0
-  syncInterval: 0.1
-  compressRotation: 1
+  syncInterval: 0.066666
   clientAuthority: 1
+  SyncScale: 0
+  compressRotation: 1
 --- !u!1 &5096844400855719564
 GameObject:
   m_ObjectHideFlags: 0

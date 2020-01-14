@@ -21,22 +21,25 @@ using UnityEngine;
 namespace Mirror
 {
     public abstract class NetworkTransformBase : NetworkBehaviour
-    {
+    {        
+        public enum Compression { None, Flat, Much, Lots, NoRotation }; // easily understandable and funny
+
+        [Header("General Settings")]
+        [Tooltip("Set to true if moves come from owner client, set to false if moves always come from server")]
+        public bool clientAuthority;
+
+        [Header("Syncronization Settings")]
+        [Tooltip("Set to true to synchronize the scale of the object. Saves 12 bytes by not sending.")]
+        public bool SyncScale = true;
+
         // rotation compression. not public so that other scripts can't modify
         // it at runtime. alternatively we could send 1 extra byte for the mode
         // each time so clients know how to decompress, but the whole point was
         // to save bandwidth in the first place.
         // -> can still be modified in the Inspector while the game is running,
         //    but would cause errors immediately and be pretty obvious.
-        [Tooltip("Compresses 16 Byte Quaternion into None=12, Much=3, Lots=2 Byte")]
-        [SerializeField] Compression compressRotation = Compression.Much;
-        public enum Compression { None, Much, Lots, NoRotation }; // easily understandable and funny
-
-        [Tooltip("Set to true if moves come from owner client, set to false if moves always come from server")]
-        public bool clientAuthority;
-
-        [Tooltip("Set to true to synchronize the scale of the object. Saves 12 bytes by not sending.")]
-        public bool SyncScale = true;
+        [Tooltip("Compresses 16 Byte Quaternion into None=12, Flat(2D)=4, Much=3, Lots=2 Byte")]
+        [SerializeField] Compression compressRotation = Compression.Flat;
 
         // is this a local player with authority over his own transform?
         bool isLocalPlayerWithAuthority => isLocalPlayer && clientAuthority;
@@ -83,6 +86,10 @@ namespace Mirror
                 // write 3 floats = 12 byte
                 writer.WriteSingle(euler.x);
                 writer.WriteSingle(euler.y);
+                writer.WriteSingle(euler.z);
+            }
+            else if(compressRotation == Compression.Flat)
+            {
                 writer.WriteSingle(euler.z);
             }
             else if (compressRotation == Compression.Much)
@@ -143,6 +150,11 @@ namespace Mirror
                 float z = reader.ReadSingle();
                 temp.localRotation = Quaternion.Euler(x, y, z);
             }
+            else if(compressRotation == Compression.Flat)
+            {
+                float z = reader.ReadSingle();
+                temp.localRotation = Quaternion.Euler(0f, 0f, z);
+            }
             else if (compressRotation == Compression.Much)
             {
                 // read 3 byte. scaling [0,255] to [0,360]
@@ -158,7 +170,11 @@ namespace Mirror
                 temp.localRotation = Quaternion.Euler(xyz.x, xyz.y, xyz.z);
             }
 
-            temp.localScale = reader.ReadVector3();
+            // Read scale only if enabled.
+            if (SyncScale)
+            {
+                temp.localScale = reader.ReadVector3();
+            }
 
             temp.timeStamp = Time.time;
 
@@ -332,7 +348,7 @@ namespace Mirror
             // local position/rotation/scale for VR support
             bool moved = lastPosition != targetComponent.transform.localPosition;
             bool rotated = lastRotation != targetComponent.transform.localRotation;
-            bool scaled = lastScale != targetComponent.transform.localScale;
+            bool scaled = lastScale != targetComponent.transform.localScale && SyncScale;
 
             // save last for next frame to compare
             // (only if change was detected. otherwise slow moving objects might
@@ -354,11 +370,14 @@ namespace Mirror
         {
             // local position/rotation for VR support
             targetComponent.transform.localPosition = position;
+
             if (Compression.NoRotation != compressRotation)
             {
                 targetComponent.transform.localRotation = rotation;
             }
-            targetComponent.transform.localScale = scale;
+
+            if(SyncScale)
+                targetComponent.transform.localScale = scale;
         }
 
         void Update()
@@ -446,7 +465,7 @@ namespace Mirror
         }
 
         // draw the data points for easier debugging
-        void OnDrawGizmos()
+        void OnDrawGizmosSelected()
         {
             // draw start and goal points
             if (start != null) DrawDataPointGizmo(start, Color.gray);

@@ -1,8 +1,9 @@
-﻿using UnityEngine;
+﻿using Mirror;
+using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(Character))]
-public class CharacterMovement : MonoBehaviour
+public class CharacterMovement : NetworkBehaviour
 {
     public Rigidbody2D Body
     {
@@ -93,34 +94,12 @@ public class CharacterMovement : MonoBehaviour
 
     private void FixedUpdate()
     {
-        bool forceMode = false;
-
-        if (forceMode)
+        if (!hasAuthority)
         {
-            float upSpeed = GetVelocity().y;
-            float rightSpeed = GetVelocity().x;
-
-            var input = InputDirection.normalized * Speed;
-
-            float targetUp = input.y;
-            float targetRight = input.x;
-
-            float upDiff = targetUp - upSpeed;
-            float rightDiff = targetRight - rightSpeed;
-
-            const float SPEED_SENS = 1f;
-
-            float forceX = Mathf.Clamp(rightDiff / SPEED_SENS, -1f, 1f) * MaxForce;
-            float forceY = Mathf.Clamp(upDiff / SPEED_SENS, -1f, 1f) * MaxForce;
-
-            Vector2 force = new Vector2(forceX, forceY);
-            force = force.ClampToMagnitude(MaxForce);
-
-            Body.AddForce(force);
+            Body.velocity = Vector2.zero;
+            return;
         }
-        else
-        {
-            Body.velocity = InputDirection.normalized * Speed;
-        }        
+
+        Body.velocity = InputDirection.normalized * Speed;    
     }
 }

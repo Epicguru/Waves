@@ -1,5 +1,4 @@
 ﻿
-using JNetworking;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -38,11 +37,6 @@ public class Spawnables : MonoBehaviour
         }
     }
 
-    public static void NetRegisterAll()
-    {
-        Instance.NetRegister();
-    }
-
     public Object[] Objects;
     public static SortedDictionary<string, Object> map;
 
@@ -70,21 +64,5 @@ public class Spawnables : MonoBehaviour
             }
         }
         Instance = this;
-    }
-
-    private void NetRegister()
-    {
-        foreach (var item in Objects)
-        {
-            if (item != null && item is GameObject)
-            {
-                var no = (item as GameObject).GetComponent<NetObject>();
-                if (no != null)
-                {
-                    JNet.RegisterPrefab(no);
-                    Debug.Log($"Registered net: {item}");
-                }
-            }
-        }
     }
 }

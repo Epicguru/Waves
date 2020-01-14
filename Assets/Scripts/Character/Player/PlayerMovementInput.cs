@@ -1,9 +1,9 @@
 ﻿
-using JNetworking;
+using Mirror;
 using UnityEngine;
 
 [RequireComponent(typeof(Character))]
-public class PlayerMovementInput : NetBehaviour
+public class PlayerMovementInput : NetworkBehaviour
 {
     public Character Character
     {
@@ -16,27 +16,13 @@ public class PlayerMovementInput : NetBehaviour
     }
     private Character _char;
 
-    public Vector2 LatestInput;
-    private Vector2 lastSent;
-
     private void Update()
     {
+        if (!isLocalPlayer)
+            return;
+
         var move = Character.Movement;
-
-        if (HasLocalOwnership)
-        {
-            LatestInput = CollectInput();
-            if (!IsServer)
-            {
-                if(LatestInput != lastSent)
-                {
-                    InvokeCMD("CmdSendInput", LatestInput);
-                    lastSent = LatestInput;
-                }
-            }
-        }
-
-        move.InputDirection = LatestInput;
+        move.InputDirection = CollectInput();
     }
 
     private Vector2 CollectInput()
@@ -54,12 +40,6 @@ public class PlayerMovementInput : NetBehaviour
             dir.y -= 1f;
 
         return dir;
-    }
-
-    [Cmd]
-    private void CmdSendInput(Vector2 dir)
-    {
-        this.LatestInput = dir;
     }
 }
 

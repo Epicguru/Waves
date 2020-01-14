@@ -1,9 +1,9 @@
 ﻿
-using JNetworking;
+using Mirror;
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterMovement))]
-public class Character : NetBehaviour
+public class Character : NetworkBehaviour
 {
     public CharacterMovement Movement
     {
@@ -19,34 +19,10 @@ public class Character : NetBehaviour
     [SyncVar]
     public string Name = "Bob";
 
-    public bool IsPlayer { get { return ControllingPlayer != null; } }
-
-    public Player ControllingPlayer
-    {
-        get
-        {
-            if (PlayerNetRef == null)
-                return null;
-
-            return PlayerNetRef.GetComponent<Player>();
-        }
-        set
-        {
-            if (PlayerNetRef == null)
-                PlayerNetRef = new NetRef();
-
-            PlayerNetRef.Set(value?.NetObject);
-        }
-    }
-
-    [SyncVar]
-    public NetRef PlayerNetRef;
+    public bool IsPlayer { get { return false; } }
 
     private void Start()
     {
-        if (IsPlayer && HasLocalOwnership)
-        {
-            Camera.main.GetComponent<CameraFollow>().Target = this.GetComponent<Rigidbody2D>();
-        }
+        
     }
 }

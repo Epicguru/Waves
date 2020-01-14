@@ -1,12 +1,16 @@
-﻿using UnityEngine;
+﻿using Mirror;
+using UnityEngine;
 
 /// <summary>
 /// Turns the character towards the mouse pointer.
 /// </summary>
-public class PlayerTurnToMouse : MonoBehaviour
+public class PlayerTurnToMouse : NetworkBehaviour
 {
     private void Update()
     {
+        if (!isLocalPlayer)
+            return;
+
         Vector2 currentPos = transform.position;
         Vector2 targetPos = InputManager.WorldMousePosition;
         Vector2 diff = (targetPos - currentPos);

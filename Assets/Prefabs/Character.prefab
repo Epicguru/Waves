@@ -267,7 +267,7 @@ MonoBehaviour:
   - {x: -0.4796177, y: -0.17091179, z: 0}
   m_ShapePathHash: 396580822
   m_Mesh: {fileID: 0}
-  m_InstanceId: 40276
+  m_InstanceId: 18078
 --- !u!1 &5096844399794015455
 GameObject:
   m_ObjectHideFlags: 0
@@ -364,8 +364,8 @@ GameObject:
   - component: {fileID: 5096844400294508737}
   - component: {fileID: 5096844400294508739}
   - component: {fileID: 5096844400294508738}
-  - component: {fileID: 5096844400294508796}
-  - component: {fileID: 5096844400294508797}
+  - component: {fileID: 6368627915823659949}
+  - component: {fileID: 237917885403375904}
   m_Layer: 0
   m_Name: Character
   m_TagString: Untagged
@@ -400,6 +400,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b3da119015a35e4da780d9923af7746, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  syncMode: 0
+  syncInterval: 0
   Name: James
 --- !u!114 &5096844400294508736
 MonoBehaviour:
@@ -430,7 +432,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4e5035d974815a2478c73d736375d889, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  LatestInput: {x: 0, y: 0}
+  syncMode: 0
+  syncInterval: 0.1
 --- !u!114 &5096844400294508737
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -480,7 +483,7 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 1
   m_Constraints: 0
---- !u!114 &5096844400294508796
+--- !u!114 &6368627915823659949
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -489,11 +492,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 5096844400294508741}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3e23d43253c92984297eda43a188c792, type: 3}
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _prefabID: 1
---- !u!114 &5096844400294508797
+  serverOnly: 0
+  m_AssetId: 
+  m_SceneId: 0
+--- !u!114 &237917885403375904
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -502,57 +507,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 5096844400294508741}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f77b63e9117a7454c9b56b7dfe5c1c67, type: 3}
+  m_Script: {fileID: 11500000, guid: 2f74aedd71d9a4f55b3ce499326d45fb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ParentNetID: 0
-  ParentNodeID: 0
-  SendRate: 16
-  SyncRotation: 1
-  ClientPredictionMode: 0
-  SnapDistance: 1.5
-  Curve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 1
-      outSlope: 1
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 1
-      inSlope: 1
-      outSlope: 1
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1.5
-      value: 1.5
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 2
-      value: 1
-      inSlope: -1
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
+  syncMode: 0
+  syncInterval: 0.1
+  compressRotation: 1
+  clientAuthority: 1
 --- !u!1 &5096844400855719564
 GameObject:
   m_ObjectHideFlags: 0

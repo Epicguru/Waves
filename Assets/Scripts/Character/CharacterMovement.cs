@@ -93,10 +93,6 @@ public class CharacterMovement : MonoBehaviour
 
     private void FixedUpdate()
     {
-        // Only runs on the server, or if we have local ownership to do predictions on.
-        if (!Character.IsServer)
-            return;
-
         bool forceMode = false;
 
         if (forceMode)

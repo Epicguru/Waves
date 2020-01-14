@@ -35,6 +35,9 @@ namespace Mirror
         [Tooltip("Set to true if moves come from owner client, set to false if moves always come from server")]
         public bool clientAuthority;
 
+        [Tooltip("Set to true to synchronize the scale of the object. Saves 12 bytes by not sending.")]
+        public bool SyncScale = true;
+
         // is this a local player with authority over his own transform?
         bool isLocalPlayerWithAuthority => isLocalPlayer && clientAuthority;
 
@@ -64,7 +67,7 @@ namespace Mirror
         protected abstract Transform targetComponent { get; }
 
         // serialization is needed by OnSerialize and by manual sending from authority
-        static void SerializeIntoWriter(NetworkWriter writer, Vector3 position, Quaternion rotation, Compression compressRotation, Vector3 scale)
+        static void SerializeIntoWriter(NetworkWriter writer, Vector3 position, Quaternion rotation, Compression compressRotation, Vector3 scale, bool writeScale)
         {
             // serialize position
             writer.WriteVector3(position);
@@ -96,13 +99,16 @@ namespace Mirror
             }
 
             // serialize scale
-            writer.WriteVector3(scale);
+            if (writeScale)
+            {
+                writer.WriteVector3(scale);
+            }
         }
 
         public override bool OnSerialize(NetworkWriter writer, bool initialState)
         {
             // use local position/rotation/scale for VR support
-            SerializeIntoWriter(writer, targetComponent.transform.localPosition, targetComponent.transform.localRotation, compressRotation, targetComponent.transform.localScale);
+            SerializeIntoWriter(writer, targetComponent.transform.localPosition, targetComponent.transform.localRotation, compressRotation, targetComponent.transform.localScale, SyncScale);
             return true;
         }
 
@@ -380,7 +386,7 @@ namespace Mirror
                             // serialize
                             // local position/rotation for VR support
                             NetworkWriter writer = new NetworkWriter();
-                            SerializeIntoWriter(writer, targetComponent.transform.localPosition, targetComponent.transform.localRotation, compressRotation, targetComponent.transform.localScale);
+                            SerializeIntoWriter(writer, targetComponent.transform.localPosition, targetComponent.transform.localRotation, compressRotation, targetComponent.transform.localScale, SyncScale);
 
                             // send to server
                             CmdClientToServerSync(writer.ToArray());

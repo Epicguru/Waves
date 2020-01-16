@@ -41,6 +41,15 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Map
+    uniqueID: 3480119979
+    locked: 0
+  - name: Map Effects
+    uniqueID: 1181194329
+    locked: 0
+  - name: Vehciles
+    uniqueID: 3906928211
+    locked: 0
   - name: Characters
     uniqueID: 850091545
     locked: 0
@@ -49,4 +58,22 @@ TagManager:
     locked: 0
   - name: Effects
     uniqueID: 3837303741
+    locked: 0
+  - name: Unused 1
+    uniqueID: 1608885833
+    locked: 0
+  - name: Unused 2
+    uniqueID: 714736417
+    locked: 0
+  - name: Unused 3
+    uniqueID: 2859516657
+    locked: 0
+  - name: Unused 4
+    uniqueID: 496170853
+    locked: 0
+  - name: Unused 5
+    uniqueID: 1197189369
+    locked: 0
+  - name: Unused 6
+    uniqueID: 1298428655
     locked: 0

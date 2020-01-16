@@ -228,7 +228,7 @@ SortingGroup:
   m_GameObject: {fileID: 5096844399595602412}
   m_Enabled: 1
   m_SortingLayerID: 2092448047
-  m_SortingLayer: 2
+  m_SortingLayer: 5
   m_SortingOrder: 0
 --- !u!114 &5096844399595602408
 MonoBehaviour:
@@ -267,7 +267,7 @@ MonoBehaviour:
   - {x: -0.4796177, y: -0.17091179, z: 0}
   m_ShapePathHash: 396580822
   m_Mesh: {fileID: 0}
-  m_InstanceId: 18078
+  m_InstanceId: 36806
 --- !u!1 &5096844399794015455
 GameObject:
   m_ObjectHideFlags: 0
@@ -403,6 +403,7 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   Name: James
+  ToMoveInto: {fileID: 0}
 --- !u!114 &5096844400294508736
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -647,7 +648,7 @@ PrefabInstance:
     - target: {fileID: 7820446925516662993, guid: 870452c29a3f1ab4ab31a6a2b34fa3d5,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7820446925516662998, guid: 870452c29a3f1ab4ab31a6a2b34fa3d5,
         type: 3}
@@ -782,7 +783,7 @@ PrefabInstance:
     - target: {fileID: 1624724944245375834, guid: 9e63932cf8d021541b7186f50fd9323b,
         type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1624724944245375846, guid: 9e63932cf8d021541b7186f50fd9323b,
         type: 3}

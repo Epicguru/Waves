@@ -15,6 +15,26 @@ public class Character : NetworkBehaviour
         }
     }
     private CharacterMovement _movement;
+    public PlayerTurnToMouse TurnToMouse
+    {
+        get
+        {
+            if (_turnToMouse == null)
+                _turnToMouse = GetComponent<PlayerTurnToMouse>();
+            return _turnToMouse;
+        }
+    }
+    private PlayerTurnToMouse _turnToMouse;
+    public PlayerVehicleInput VehicleInput
+    {
+        get
+        {
+            if (_vehPlayerInput == null)
+                _vehPlayerInput = GetComponent<PlayerVehicleInput>();
+            return _vehPlayerInput;
+        }
+    }
+    private PlayerVehicleInput _vehPlayerInput;
 
     [SyncVar]
     public string Name = "Bob";
@@ -49,6 +69,8 @@ public class Character : NetworkBehaviour
                 {
                     // Remove from driver position.
                     current.SetDriver(null);
+
+                    Debug.Log($"{this} is no longer the driver of {current}.");
                 }
                 else
                 {
@@ -57,6 +79,8 @@ public class Character : NetworkBehaviour
                     {
                         // Remove from passenger position.
                         current.SetPassenger(index, null);
+
+                        Debug.Log($"{this} is no longer a passenger of {current}.");
                     }
                     else
                     {
@@ -64,6 +88,9 @@ public class Character : NetworkBehaviour
                         Debug.LogError("Logic error: character is registered as being in a vehicle, but is not driver nor passenger.");
                     }
                 }
+
+                // Set vehicle to null.
+                _vehicle = null;
             }
             else
             {
@@ -86,6 +113,8 @@ public class Character : NetworkBehaviour
                     {
                         // Remove from driver position.
                         current.SetDriver(null);
+
+                        Debug.Log($"{this} is no longer the driver of {current} (moving to new vehicle {value}).");
                     }
                     else
                     {
@@ -94,6 +123,8 @@ public class Character : NetworkBehaviour
                         {
                             // Remove from passenger position.
                             current.SetPassenger(index, null);
+
+                            Debug.Log($"{this} is no longer a passenger of {current} (moving to new vehicle {value}).");
                         }
                         else
                         {
@@ -112,6 +143,8 @@ public class Character : NetworkBehaviour
 
                     // Mark as current vehicle.
                     _vehicle = value.gameObject;
+
+                    Debug.Log($"{this} is now driving {value}.");
                 }
                 else
                 {
@@ -121,6 +154,8 @@ public class Character : NetworkBehaviour
 
                     // Mark as current vehicle.
                     _vehicle = value.gameObject;
+
+                    Debug.Log($"{this} is now a passenger of {value}.");
                 }
             }
         }
@@ -137,6 +172,18 @@ public class Character : NetworkBehaviour
         }
     }
 
+    /// <summary>
+    /// Returns true if this character is currently driving a vehicle. Note that even if this character is not driving (returns false), they could still be 
+    /// a passenger.
+    /// </summary>
+    public bool IsVehicleDriver
+    {
+        get
+        {
+            return IsInVehicle && CurrentVehicle.GetDriver() == this;
+        }
+    }
+
     [SyncVar]
     private GameObject _vehicle;
 
@@ -144,17 +191,99 @@ public class Character : NetworkBehaviour
 
     public override void OnStartLocalPlayer()
     {
-        //Camera.main.GetComponent<CameraFollow>().Target = Movement.Body;
+        CameraFollow.Instance.Target = this.transform;
     }
 
     private void Update()
     {
-        Movement.enabled = !IsInVehicle;
+        //Movement.enabled = isLocalPlayer && !IsInVehicle;
+        if (TurnToMouse != null)
+            TurnToMouse.enabled = isLocalPlayer && !IsInVehicle;
+        VehicleInput.enabled = isLocalPlayer && IsVehicleDriver;
+
+        if (IsInVehicle)
+        {
+            if (transform.parent == null)
+            {
+                var veh = CurrentVehicle;
+                transform.parent = IsVehicleDriver ? veh.GetDriverSeat() : veh.GetPassengerSeat(veh.GetPassengerIndex(this));
+                // Disable physics and rigidbody.
+                Movement.Body.simulated = false;
+            }
+
+            // Move to local (0, 0).
+            transform.localPosition = Vector3.zero;
+            transform.localRotation = Quaternion.identity;
+
+        }
+        else
+        {
+            if (transform.parent != null)
+            {
+                transform.SetParent(null, true);
+                Movement.Body.simulated = true;
+            }
+        }
 
         if (ToMoveInto != null)
         {
             CurrentVehicle = ToMoveInto;
             ToMoveInto = null;
+        }
+
+        if (isLocalPlayer)
+            UpdateVehicleEnter();
+    }
+
+    private void UpdateVehicleEnter()
+    {
+        if (!isLocalPlayer)
+            return;
+
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            if (IsInVehicle)
+            {
+                if (isServer)
+                    CurrentVehicle = null;
+                else
+                    CmdRequestVehicleUpdate(null);
+            }
+            else
+            {
+                Vector3 start = InputManager.WorldMousePosition;
+                start.z = -10f;
+                var hit = Physics2D.GetRayIntersection(new Ray(start, Vector3.forward));
+
+                if (hit)
+                {
+                    if (hit.collider.gameObject.CompareTag("Vehicle"))
+                    {
+                        var veh = hit.collider.GetComponentInParent<Vehicle>();
+                        if (veh != null && veh.FreeSpaceCount != 0)
+                        {
+                            if (isServer)
+                                CurrentVehicle = veh;
+                            else
+                                CmdRequestVehicleUpdate(veh.gameObject);
+                        }
+                    }
+                }
+            }
+            
+        }        
+    }
+
+    [Command]
+    private void CmdRequestVehicleUpdate(GameObject veh)
+    {
+        if(veh == null)
+        {
+            CurrentVehicle = null;
+        }
+        else
+        {
+            CurrentVehicle = veh.GetComponent<Vehicle>();
         }
     }
 }

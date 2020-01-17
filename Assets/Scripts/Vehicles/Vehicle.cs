@@ -4,16 +4,28 @@ using UnityEngine;
 
 public class Vehicle : NetworkBehaviour
 {
+    public CarPhysics Car
+    {
+        get
+        {
+            if (_car == null)
+                _car = GetComponent<CarPhysics>();
+            return _car;
+        }
+    }
+    private CarPhysics _car;
+
     public string Name = "Car";
 
     [Header("Riders")]
-    [Range(0, 32)]
-    public int MaxPassengers = 1;
+    [SerializeField] private Transform driverSeat;
+    [SerializeField] private Transform[] passengerSeats;
 
     [SyncVar]
     private GameObject _driver;
     private readonly SyncListGameObject _passengers = new SyncListGameObject();
 
+    public int MaxPassengers { get { return passengerSeats?.Length ?? 0; } }
     public bool HasDriver { get { return _driver != null; } }
     public int PassengerCount
     {
@@ -31,6 +43,11 @@ public class Vehicle : NetworkBehaviour
         }
     }
     public int FreeSpaceCount { get { return (MaxPassengers - PassengerCount) + (HasDriver ? 0 : 1); } }
+
+    private void Awake()
+    {
+        gameObject.tag = "Vehicle";
+    }
 
     public override void OnStartServer()
     {
@@ -144,5 +161,32 @@ public class Vehicle : NetworkBehaviour
         }
 
         return -1;
+    }
+
+    public Transform GetDriverSeat()
+    {
+        return driverSeat;
+    }
+
+    public Transform GetPassengerSeat(int index)
+    {
+        if (index < 0 || index >= _passengers.Count)
+        {
+            Debug.LogError($"Cannot get passenger seat for index {index}, index must be between 0 and {_passengers.Count - 1} [{MaxPassengers - 1}] inclusive.");
+            return null;
+        }
+
+        return passengerSeats[index];
+    }
+
+    [Server]
+    public void HandleInput(float turn, float forward)
+    {
+        if(Car != null)
+        {
+            Car.TurnInput = turn;
+            Car.ForwardsInput = forward;
+            return;
+        }
     }
 }

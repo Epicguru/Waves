@@ -2,7 +2,18 @@
 
 public class CameraFollow : MonoBehaviour
 {
-    public Rigidbody2D Target;
+    public static CameraFollow Instance
+    {
+        get
+        {
+            if (_instance == null)
+                _instance = Camera.main.GetComponent<CameraFollow>();
+            return _instance;
+        }
+    }
+    private static CameraFollow _instance;
+
+    public Transform Target;
     public float Z = -10f;
 
     private void Update()

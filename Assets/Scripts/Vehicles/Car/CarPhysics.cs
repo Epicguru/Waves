@@ -2,6 +2,7 @@
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
+[RequireComponent(typeof(Vehicle))]
 public class CarPhysics : NetworkBehaviour
 {   
     public Rigidbody2D Body
@@ -14,15 +15,29 @@ public class CarPhysics : NetworkBehaviour
         }
     }
     private Rigidbody2D _body;
+    public Vehicle Vehicle
+    {
+        get
+        {
+            if (_veh == null)
+                _veh = GetComponent<Vehicle>();
+            return _veh;
+        }
+    }
+    private Vehicle _veh;
 
     [Header("References")]
     public TrailRenderer[] Wheels;
 
     [Header("Input")]
-    [Range(-0.5f, 1f)]
-    public float ForwardsInput = 0f;
     [Range(-1f, 1f)]
-    public float Turn = 0f;
+    public float TurnInput = 0;
+    public float ForwardsInput = 0f;
+
+    [Header("Handling")]
+    public float TurnSpeed = 8f;
+    [Range(0f, 1f)]
+    public float MaxReverseForceScale = 1f;
 
     [Header("Forces")]
     public float MaxDriveForce = 50000f;
@@ -39,6 +54,12 @@ public class CarPhysics : NetworkBehaviour
     [Header("Tire Trails")]
     public float MinTrailVel = 11f;
 
+    [Header("Runtime")]
+    [Range(-1f, 1f)]
+    public float Forwards = 0f;
+    [Range(-1f, 1f)]
+    public float Turn = 0f;
+
     [Header("Debug")]
     public bool DrawDebug = false;
 
@@ -51,6 +72,9 @@ public class CarPhysics : NetworkBehaviour
 
     private void Update()
     {
+        // Update input-to-drive (turning input into actual control).
+        UpdateInputToDrive();
+
         // Update network related stuff.
         UpdateNet();
 
@@ -63,14 +87,46 @@ public class CarPhysics : NetworkBehaviour
         // Draw debug
         if (DrawDebug && Application.isEditor)
         {
-            Debug.DrawLine(transform.position, transform.position + transform.right * ForwardsInput * 2f, Color.green);
+            Debug.DrawLine(transform.position, transform.position + transform.right * Forwards * 2f, Color.green);
 
             float angle = Vector2.SignedAngle(Body.velocity, transform.right);
             float dot = 1f - Mathf.Abs(Vector2.Dot(Body.velocity.normalized, transform.forward));
             float horizontalVel = transform.InverseTransformVector(Body.velocity).y;
             float resistiveForceScale = dot * ResistiveForceCoefficient * Mathf.Abs(horizontalVel);
-            Debug.DrawLine(transform.position, transform.position + transform.up * (angle > 0f ? 1f : -1f) * resistiveForceScale / MaxResistiveForce, resistiveForceScale == MaxResistiveForce ? Color.red : Color.blue);
+            resistiveForceScale = Mathf.Min(resistiveForceScale, MaxResistiveForce);
+            Debug.DrawLine(transform.position, transform.position + (resistiveForceScale / MaxResistiveForce) * transform.up * (angle > 0f ? 1f : -1f), resistiveForceScale == MaxResistiveForce ? Color.red : Color.blue);
         }
+    }
+
+    private void UpdateInputToDrive()
+    {
+        TurnInput = Mathf.Clamp(TurnInput, -1f, 1f);
+        ForwardsInput = Mathf.Clamp(ForwardsInput, -1f, 1f);
+        TurnSpeed = Mathf.Abs(TurnSpeed);
+
+        if (!Vehicle.HasDriver)
+        {
+            ForwardsInput = 0f;
+            TurnInput = 0f;
+        }
+
+        if(Turn < TurnInput)
+        {
+            Turn += Time.deltaTime * TurnSpeed;
+            if (Turn > TurnInput)
+                Turn = TurnInput;
+        }
+        else if(Turn > TurnInput)
+        {
+            Turn -= Time.deltaTime * TurnSpeed;
+            if (Turn < TurnInput)
+                Turn = TurnInput;
+        }
+
+        if (ForwardsInput >= 0f)
+            Forwards = ForwardsInput;
+        else
+            Forwards = MaxReverseForceScale * ForwardsInput;
     }
 
     /// <summary>
@@ -78,6 +134,9 @@ public class CarPhysics : NetworkBehaviour
     /// </summary>
     private void UpdateNet()
     {
+        // URGTODO fixme: removing from simulation also removes colliders, allowing cars to be walked through by client.
+        return;
+
         bool sim = isServer;
         if (sim != Body.simulated)
             Body.simulated = sim;
@@ -98,7 +157,7 @@ public class CarPhysics : NetworkBehaviour
     {
 
         // Update driving force.
-        Body.AddForce(MaxDriveForce * Mathf.Clamp(ForwardsInput, -0.5f, 1f) * transform.right);        
+        Body.AddForce(MaxDriveForce * Mathf.Clamp(Forwards, -1f, 1f) * transform.right);        
 
         // Update turning torque.
         Body.AddTorque(Mathf.Clamp(Turn, -1f, 1f) * MaxTurnTorque * Mathf.Clamp01(Body.velocity.magnitude / BaseSpeedForTurn));

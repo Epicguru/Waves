@@ -2411,7 +2411,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   syncMode: 0
   syncInterval: 0.1
-  SendRate: 15
+  SendRate: 20
 --- !u!114 &1477635027
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3151,8 +3151,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   syncMode: 0
-  syncInterval: 0.1
-  SendRate: 15
+  syncInterval: 0.05
+  SendRate: 20
 --- !u!114 &1725872730
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3765,7 +3765,8 @@ MonoBehaviour:
     type: 3}
   autoCreatePlayer: 1
   playerSpawnMethod: 0
-  spawnPrefabs: []
+  spawnPrefabs:
+  - {fileID: 7820446925516662993, guid: 870452c29a3f1ab4ab31a6a2b34fa3d5, type: 3}
 --- !u!1 &1888029969
 GameObject:
   m_ObjectHideFlags: 0
@@ -4009,7 +4010,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1953984656}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -10.465, y: -0.56999993, z: 0}
+  m_LocalPosition: {x: -1.23, y: -0.1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -8935,7 +8936,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1959076289}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.41, y: -1.53, z: 0}
+  m_LocalPosition: {x: -1.344, y: -0.299, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}

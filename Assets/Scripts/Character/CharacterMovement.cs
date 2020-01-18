@@ -32,23 +32,7 @@ public class CharacterMovement : NetworkBehaviour
     [Header("Movement")]
     public float MaxForce = 10f;
 
-    [Header("Feet")]
-    public Animator FeetAnim;
-    public float SpeedAnimScale = 1f;
-
     public bool IsMoving { get { return GetVelocity().sqrMagnitude > 0.5f; } }
-
-    private void Update()
-    {
-        // Runs on all clients.
-
-        FeetAnim.SetBool("Move", IsMoving);
-        FeetAnim.SetFloat("Speed", GetVelocity().magnitude * SpeedAnimScale);
-
-        Vector2 rv = GetNormalizedVelocityInDirection(-transform.up);
-
-        FeetAnim.SetLayerWeight(1, rv.magnitude);
-    }
 
     public Vector2 GetForwardDirection()
     {

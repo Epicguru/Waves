@@ -64,11 +64,9 @@ public class CarPhysics : NetworkBehaviour
     public bool DrawDebug = false;
 
     [SyncVar]
-    private Vector2 BodyVel = Vector2.zero;
-    [SyncVar]
-    private float BodyAngularVel = 0f;
-    [SyncVar]
     private float WheelAngle = 0f;
+    [SyncVar]
+    private bool backWheelTrail, frontWheelTrail;
 
     private void Update()
     {
@@ -134,28 +132,11 @@ public class CarPhysics : NetworkBehaviour
     /// </summary>
     private void UpdateNet()
     {
-        // URGTODO fixme: removing from simulation also removes colliders, allowing cars to be walked through by client.
         return;
-
-        bool sim = isServer;
-        if (sim != Body.simulated)
-            Body.simulated = sim;
-
-        if (!sim)
-        {
-            Body.velocity = BodyVel;
-            Body.angularVelocity = BodyAngularVel;
-        }
-        else
-        {
-            BodyVel = Body.velocity;
-            BodyAngularVel = Body.angularVelocity;
-        }
     }
 
     private void FixedUpdate()
     {
-
         // Update driving force.
         Body.AddForce(MaxDriveForce * Mathf.Clamp(Forwards, -1f, 1f) * transform.right);        
 
@@ -183,22 +164,51 @@ public class CarPhysics : NetworkBehaviour
         if (isServer)
             WheelAngle = GetFrontWheelAngle();
 
-        Wheels[2].transform.localEulerAngles = new Vector3(0f, 0f, WheelAngle);
-        Wheels[3].transform.localEulerAngles = new Vector3(0f, 0f, WheelAngle);
+        if (isServer)
+        {
+            Wheels[2].transform.localEulerAngles = new Vector3(0f, 0f, WheelAngle);
+            Wheels[3].transform.localEulerAngles = new Vector3(0f, 0f, WheelAngle);
+        }
+        else
+        {
+            float a = Wheels[2].transform.localEulerAngles.z;
+            Wheels[2].transform.localEulerAngles = new Vector3(0f, 0f, Mathf.LerpAngle(a, WheelAngle, Time.deltaTime * WheelTurnSpeed * 2f));
+            Wheels[3].transform.localEulerAngles = new Vector3(0f, 0f, Mathf.LerpAngle(a, WheelAngle, Time.deltaTime * WheelTurnSpeed * 2f));
+        }
     }
 
     private void UpdateWheelTrails()
     {
-        foreach (var wheel in Wheels)
+        if(isServer)
         {
-            Vector2 velAtWheel = Body.GetPointVelocity(wheel.transform.position);
+            for (int i = 0; i < Wheels.Length; i++)
+            {
+                // Wheels have trails when they are moving sideways above a certain speed.
+                var wheel = Wheels[i];
 
-            Vector2 localVel = transform.InverseTransformVector(velAtWheel);
+                Vector2 velAtWheel = Body.GetPointVelocity(wheel.transform.position);
+                Vector2 localVel = transform.InverseTransformVector(velAtWheel);
+                float horizontal = localVel.y;
 
-            float horizontal = localVel.y;
+                wheel.emitting = Mathf.Abs(horizontal) >= MinTrailVel;
 
-            wheel.emitting = Mathf.Abs(horizontal) >= MinTrailVel;
+                // Tells clients when to emmit wheel trails, simplified to back and front wheels.
+                // I tried to just allow the physics system to determine trail just like on the server, but it resulted in broken (discontinuous) trails
+                // and unexpected trails when lag occured. So I'll just do it this way.
+                if (i == 0)
+                    backWheelTrail = wheel.emitting;
+                if (i == 2)
+                    frontWheelTrail = wheel.emitting;
+            }
         }
+        else
+        {
+            Wheels[0].emitting = backWheelTrail;
+            Wheels[1].emitting = backWheelTrail;
+
+            Wheels[2].emitting = frontWheelTrail;
+            Wheels[3].emitting = frontWheelTrail;
+        }        
     }
 
     private void OnGUI()

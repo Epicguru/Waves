@@ -3,6 +3,7 @@ using Mirror;
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterMovement))]
+[RequireComponent(typeof(CharacterItemManager))]
 public class Character : NetworkBehaviour
 {
     public CharacterMovement Movement
@@ -15,6 +16,16 @@ public class Character : NetworkBehaviour
         }
     }
     private CharacterMovement _movement;
+    public CharacterItemManager ItemManager
+    {
+        get
+        {
+            if (_itemManager == null)
+                _itemManager = GetComponent<CharacterItemManager>();
+            return _itemManager;
+        }
+    }
+    private CharacterItemManager _itemManager;
     public PlayerTurnToMouse TurnToMouse
     {
         get
@@ -38,6 +49,8 @@ public class Character : NetworkBehaviour
 
     [SyncVar]
     public string Name = "Bob";
+
+    public Item StartingItem;
 
     /// <summary>
     /// Gets or sets the current vehicle. This should be used to move the character in and out of vehicles, instead of directly accessing the Vehicle class methods.
@@ -192,6 +205,21 @@ public class Character : NetworkBehaviour
     public override void OnStartLocalPlayer()
     {
         CameraFollow.Instance.Target = this.transform;
+    }
+
+    public override void OnStartServer()
+    {
+        // Spawn in an item and equip it.
+        if(StartingItem != null)
+        {
+            var spawned = Instantiate(StartingItem);
+            NetworkServer.Spawn(spawned.gameObject);
+
+            Debug.Log(this.netIdentity.connectionToClient);
+
+            // Now equip it.
+            ItemManager.CurrentItem = spawned;
+        }
     }
 
     private void Update()

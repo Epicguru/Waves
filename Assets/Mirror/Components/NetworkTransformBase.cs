@@ -32,6 +32,12 @@ namespace Mirror
         [Tooltip("Set to true to synchronize the scale of the object. Saves 12 bytes by not sending.")]
         public bool SyncScale = true;
 
+        [Header("Teleporting")]
+        [Tooltip("Time multiplier after not recieving an update before teleporting to last known position.")]
+        public float TimeThreshold = 4f;
+        [Tooltip("The distance between current position and latest server position at which teleporting hapens. May need to be increased for very fast moving objects.")]
+        public float DistanceToConsiderTeleport = 8f;
+
         // rotation compression. not public so that other scripts can't modify
         // it at runtime. alternatively we could send 1 extra byte for the mode
         // each time so clients know how to decompress, but the whole point was
@@ -333,12 +339,23 @@ namespace Mirror
         //    didn't reach the goal after too much time has elapsed
         bool NeedsTeleport()
         {
+            // Custom: teleport if the distance between start and goal is over a threashold.
+            // This helps fix desync when teleporing the player, which supprisingly isn't handled in default implementation.
+            Vector3 startPos = start == null ? targetComponent.localPosition : start.localPosition;
+            Vector3 goalPos = goal == null ? targetComponent.localPosition : goal.localPosition;
+
+            if((goalPos - startPos).sqrMagnitude >= DistanceToConsiderTeleport * DistanceToConsiderTeleport)
+            {
+                return true;
+            }
+
+            // Default: teleport if we haven't recieved an update for more than 5 times the last interpolation time.
             // calculate time between the two data points
             float startTime = start != null ? start.timeStamp : Time.time - syncInterval;
             float goalTime = goal != null ? goal.timeStamp : Time.time;
             float difference = goalTime - startTime;
             float timeSinceGoalReceived = Time.time - goalTime;
-            return timeSinceGoalReceived > difference * 5;
+            return timeSinceGoalReceived > difference * TimeThreshold;
         }
 
         // moved since last time we checked it?

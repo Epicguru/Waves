@@ -1,22 +1,49 @@
 ﻿
+using Mirror;
 using UnityEngine;
 
 [DisallowMultipleComponent]
-public class Item : MonoBehaviour
+public class Item : NetworkBehaviour
 {
     public Character Character
     {
         get
         {
-            if (transform.parent == null)
-                _char = null;
+            return _character == null ? null : _character.GetComponent<Character>();
+        }
+        internal set
+        {
+            if (!isServer)
+                return;
 
-            if (_char == null)
-                _char = GetComponentInParent<Character>();
-            return _char;
+            _character = value == null ? null : value.gameObject;
         }
     }
-    private Character _char;
+    [SyncVar]
+    private GameObject _character;
 
-    public string Name;
+    public bool IsHeld { get { return _character != null; } }
+
+    [SyncVar]
+    public string Name = "My Item Name";
+
+    private void Update()
+    {
+        if (IsHeld)
+        {
+            if (transform.parent != Character.ItemManager.Holder)
+            {
+                transform.SetParent(Character.ItemManager.Holder, true);
+                transform.localPosition = Vector3.zero;
+                transform.localEulerAngles = Vector3.zero;
+            }            
+        }
+        else
+        {
+            if (transform.parent != null)
+            {
+                transform.SetParent(null, true);
+            }
+        }
+    }
 }

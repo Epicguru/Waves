@@ -73,7 +73,10 @@ public class PlayerVehicleInput : NetworkBehaviour
     {
         var veh = Character.CurrentVehicle;
         if (veh == null)
+        {
+            Debug.LogWarning("Character is sending input for a vehicle, but they are not in a vehicle!");
             return;
+        }
 
         veh.HandleInput(turn, forwards);
     }

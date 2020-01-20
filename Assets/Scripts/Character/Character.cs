@@ -229,6 +229,11 @@ public class Character : NetworkBehaviour
             TurnToMouse.enabled = isLocalPlayer && !IsInVehicle;
         VehicleInput.enabled = isLocalPlayer && IsVehicleDriver;
 
+        if (isLocalPlayer)
+        {
+            CameraFollow.Instance.TargetSize = IsInVehicle ? Mathf.Min(14f + CurrentVehicle.Rigidbody.velocity.magnitude * 0.5f, 30f) : 10f;
+        }
+
         if (IsInVehicle)
         {
             if (transform.parent == null)

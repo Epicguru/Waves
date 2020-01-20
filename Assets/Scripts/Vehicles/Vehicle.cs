@@ -2,8 +2,19 @@
 using Mirror;
 using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody2D))]
 public class Vehicle : NetworkBehaviour
 {
+    public Rigidbody2D Rigidbody
+    {
+        get
+        {
+            if (_body == null)
+                _body = GetComponent<Rigidbody2D>();
+            return _body;
+        }
+    }
+    private Rigidbody2D _body;
     public CarPhysics Car
     {
         get

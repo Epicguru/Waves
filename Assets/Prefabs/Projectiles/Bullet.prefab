@@ -45,7 +45,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e32727dde3123974398ba7859da5f61d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Speed: 40
+  Speed: 100
   MaxDuration: 5
   MaxDistance: 0
   Mask:
@@ -170,7 +170,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 47164c4fd0f421c4cb8ad2bb5afed52a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _id: 0
+  _id: 41470
   UponSpawn:
     m_PersistentCalls:
       m_Calls: []

@@ -71,6 +71,8 @@ MonoBehaviour:
   IsAutomatic: 0
   RPM: 400
   MagazineSize: 12
+  ProjectilePrefab: {fileID: 8699773190103137150, guid: de38860b4bcd5194790960d497166cc4,
+    type: 3}
   MuzzleFlash: {fileID: 11400000, guid: d582432467844f44096d1cb6c99ffa0a, type: 2}
   CurrentBullets: 0
   IsReloading: 0
@@ -119,8 +121,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   syncMode: 0
   syncInterval: 0.1
-  animator: {fileID: 1624724944245375832}
-  clientAuthority: 0
+  Animator: {fileID: 0}
 --- !u!114 &577450617
 MonoBehaviour:
   m_ObjectHideFlags: 0

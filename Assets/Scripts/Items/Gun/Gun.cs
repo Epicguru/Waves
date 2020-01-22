@@ -37,6 +37,9 @@ public class Gun : NetworkBehaviour
     public float RPM = 500f;
     public int MagazineSize = 30;
 
+    [Header("Bullets")]
+    public Projectile ProjectilePrefab;
+
     [Header("Effects")]
     public MuzzleFlashData MuzzleFlash;
 
@@ -81,7 +84,8 @@ public class Gun : NetworkBehaviour
         }
 
         // Update animator: moving state.
-        NetAnim.animator.SetBool("Move", Item.Character?.Movement.IsMoving ?? false);
+        if(isServer)
+            NetAnim.SetBool("Move", Item.Character?.Movement.IsMoving ?? false);
     }
 
     private void ProcessInputs()
@@ -208,8 +212,6 @@ public class Gun : NetworkBehaviour
                 if (!isServer)
                     break;
 
-                Debug.Log("Reload");
-
                 IsReloading = false;
                 CurrentBullets = MagazineSize;
                 OnReload?.Invoke();
@@ -218,8 +220,14 @@ public class Gun : NetworkBehaviour
             case "shoot":
                 if (isServer)
                 {
-                    Debug.Log($"Bang ({name}) {Environment.StackTrace}");
+                    // Remove one bullet.
                     CurrentBullets--;
+
+                    // Spawn projectile.
+                    if(Muzzle != null)
+                        Projectile.Spawn(ProjectilePrefab, Muzzle.position, Muzzle.right);
+
+                    // Invoke event. This does not do any core functionality, it's just so that certain guns can spawn custom effects or similar things.
                     OnShoot?.Invoke();
                 }
 

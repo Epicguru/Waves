@@ -1,4 +1,5 @@
 ﻿
+using Mirror;
 using System.Collections;
 using UnityEngine;
 
@@ -34,6 +35,7 @@ public class Projectile : MonoBehaviour
     {
         startPos = transform.position;
         timer = 0f;
+        GetComponent<TrailRenderer>().Clear();
     }
 
     public bool IsInsideMaxDistance()
@@ -125,12 +127,40 @@ public class Projectile : MonoBehaviour
             return;
         }
 
-        // TODO - based on server or client state, do one or the other.
+        if (!NetworkServer.active)
+            return;
 
+        SpawnLocal(prefab, position, direction);
+
+        ProjectileMessage m = new ProjectileMessage();
+        m.Direction = direction;
+        m.Position = position;
+
+        NetworkServer.SendToAll(m);
+    }
+
+    private static Projectile SpawnLocal(Projectile prefab, Vector2 position, Vector2 direction)
+    {
         var spawned = PoolObject.Spawn(prefab);
         spawned.transform.position = position;
         spawned.Direction = direction;
 
         spawned.Fire();
+
+        return spawned;
+    }
+
+    public static void Init()
+    {
+        NetworkClient.RegisterHandler<ProjectileMessage>(OnMessage);
+    }
+
+    private static void OnMessage(NetworkConnection c, ProjectileMessage m)
+    {
+        if (NetworkServer.active)
+            return;
+
+        //var prefab = ???;
+        //SpawnLocal(prefab, m.Position, m.Direction);
     }
 }

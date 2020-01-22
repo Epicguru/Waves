@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -5,425 +6,281 @@ namespace Mirror
 {
     /// <summary>
     /// A component to synchronize Mecanim animation states for networked objects.
+    /// Custom implementation by James B.
     /// </summary>
-    /// <remarks>
-    /// <para>The animation of game objects can be networked by this component. There are two models of authority for networked movement:</para>
-    /// <para>If the object has authority on the client, then it should animated locally on the owning client. The animation state information will be sent from the owning client to the server, then broadcast to all of the other clients. This is common for player objects.</para>
-    /// <para>If the object has authority on the server, then it should be animated on the server and state information will be sent to all clients. This is common for objects not related to a specific client, such as an enemy unit.</para>
-    /// <para>The NetworkAnimator synchronizes the animation parameters that are checked in the inspector view. It does not automatically sychronize triggers. The function SetTrigger can by used by an object with authority to fire an animation trigger on other clients.</para>
-    /// </remarks>
     [DisallowMultipleComponent]
     [AddComponentMenu("Network/NetworkAnimator")]
     [RequireComponent(typeof(NetworkIdentity))]
-    [HelpURL("https://mirror-networking.com/docs/Components/NetworkAnimator.html")]
     public class NetworkAnimator : NetworkBehaviour
     {
-        /// <summary>
-        /// The animator component to synchronize.
-        /// </summary>
-        [FormerlySerializedAs("m_Animator")]
-        public Animator animator;
+        public Animator Animator;
 
-        // Note: not an object[] array because otherwise initialization is real annoying
-        int[] lastIntParameters;
-        float[] lastFloatParameters;
-        bool[] lastBoolParameters;
-        AnimatorControllerParameter[] parameters;
+        private Dictionary<int, AnimatorControllerParameterType> hashToType;
+        private Dictionary<string, int> nameToHash;
+        private Dictionary<int, ulong> hashToMask;
+        private Dictionary<ulong, int> maskToHash;
 
-        int[] animationHash; // multiple layers
-        int[] transitionHash;
-        float sendTimer;
+        private Dictionary<int, bool> bools;
+        private Dictionary<int, float> floats;
+        private Dictionary<int, int> ints;
 
-        [Tooltip("Set to true if animations come from owner client,  set to false if animations always come from server")]
-        public bool clientAuthority;
+        private bool CanWrite { get { return isServer; } }
 
-        bool sendMessagesAllowed
+        private void Awake()
         {
-            get
-            {
-                if (isServer)
-                {
-                    if (!clientAuthority)
-                        return true;
+            if (Animator == null)
+                Animator = GetComponentInChildren<Animator>();
 
-                    // This is a special case where we have client authority but we have not assigned the client who has
-                    // authority over it, no animator data will be sent over the network by the server.
-                    //
-                    // So we check here for a connectionToClient and if it is null we will
-                    // let the server send animation data until we receive an owner.
-                    if (netIdentity != null && netIdentity.connectionToClient == null)
-                        return true;
-                }
-
-                return (hasAuthority && clientAuthority);
-            }
-        }
-
-        void Awake()
-        {
-            // store the animator parameters in a variable - the "Animator.parameters" getter allocates
-            // a new parameter array every time it is accessed so we should avoid doing it in a loop
-            parameters = animator.parameters;
-            lastIntParameters = new int[parameters.Length];
-            lastFloatParameters = new float[parameters.Length];
-            lastBoolParameters = new bool[parameters.Length];
-
-            animationHash = new int[animator.layerCount];
-            transitionHash = new int[animator.layerCount];
-        }
-
-        void FixedUpdate()
-        {
-            if (!sendMessagesAllowed)
+            if (Animator == null)
                 return;
 
-            CheckSendRate();
+            hashToType = new Dictionary<int, AnimatorControllerParameterType>();
+            nameToHash = new Dictionary<string, int>();
+            hashToMask = new Dictionary<int, ulong>();
+            maskToHash = new Dictionary<ulong, int>();
+            bools = new Dictionary<int, bool>();
+            floats = new Dictionary<int, float>();
+            ints = new Dictionary<int, int>();
 
-            for (int i = 0; i < animator.layerCount; i++)
+            int count = 0;
+            foreach(var p in Animator.parameters)
             {
-                int stateHash;
-                float normalizedTime;
-                if (!CheckAnimStateChanged(out stateHash, out normalizedTime, i))
-                {
+                // Triggers are handled differently.
+                if (p.type == AnimatorControllerParameterType.Trigger)
                     continue;
+
+                if(count == 64)
+                {
+                    Debug.LogError($"There are more than 64 parameters (not including triggers) on this animator. Only 64 are supported by the networking system. Some parameters will not be sychronized. Consider using less parameters.");
+                    break;
                 }
 
-                NetworkWriter writer = new NetworkWriter();
-                WriteParameters(writer);
+                int hash = p.nameHash;
+                ulong mask = 1UL << count;
 
-                SendAnimationMessage(stateHash, normalizedTime, i, writer.ToArray());
+                hashToType.Add(hash, p.type);
+                hashToMask.Add(hash, mask);
+                maskToHash.Add(mask, hash);
+                nameToHash.Add(p.name, hash);
+
+                switch (p.type)
+                {
+                    case AnimatorControllerParameterType.Float:
+                        floats.Add(hash, p.defaultFloat);
+                        break;
+                    case AnimatorControllerParameterType.Int:
+                        ints.Add(hash, p.defaultInt);
+                        break;
+                    case AnimatorControllerParameterType.Bool:
+                        bools.Add(hash, p.defaultBool);
+                        break;
+                }
+
+                Debug.Log($"Registered parameter {p.name} of type {p.type}");
+
+                count++;
             }
+
+            Debug.Log($"Initialized net animator with {hashToType.Count} parameters, not including triggers.");
         }
 
-        bool CheckAnimStateChanged(out int stateHash, out float normalizedTime, int layerId)
+        public bool HasParameter(int hash, AnimatorControllerParameterType type)
         {
-            stateHash = 0;
-            normalizedTime = 0;
+            return hashToType.ContainsKey(hash) && hashToType[hash] == type;
+        }
 
-            if (animator.IsInTransition(layerId))
+        public int GetHash(string name)
+        {
+            return Animator.StringToHash(name);
+        }
+
+        private bool GetHash(string name, out int hash)
+        {
+            if (!nameToHash.ContainsKey(name))
             {
-                AnimatorTransitionInfo tt = animator.GetAnimatorTransitionInfo(layerId);
-                if (tt.fullPathHash != transitionHash[layerId])
-                {
-                    // first time in this transition
-                    transitionHash[layerId] = tt.fullPathHash;
-                    animationHash[layerId] = 0;
-                    return true;
-                }
+                hash = 0;
                 return false;
             }
 
-            AnimatorStateInfo st = animator.GetCurrentAnimatorStateInfo(layerId);
-            if (st.fullPathHash != animationHash[layerId])
-            {
-                // first time in this animation state
-                if (animationHash[layerId] != 0)
-                {
-                    // came from another animation directly - from Play()
-                    stateHash = st.fullPathHash;
-                    normalizedTime = st.normalizedTime;
-                }
-                transitionHash[layerId] = 0;
-                animationHash[layerId] = st.fullPathHash;
-                return true;
-            }
-            return false;
+            hash = nameToHash[name];
+            return true;
         }
 
-        void CheckSendRate()
+        public void SetBool(string name, bool value)
         {
-            if (sendMessagesAllowed && syncInterval > 0 && sendTimer < Time.time)
+            if (!GetHash(name, out int hash))
             {
-                sendTimer = Time.time + syncInterval;
-
-                NetworkWriter writer = new NetworkWriter();
-                if (WriteParameters(writer))
-                {
-                    SendAnimationParametersMessage(writer.ToArray());
-                }
+                Debug.LogWarning($"Failed to find parameter for name {name}.");
+                return;
             }
+
+            SetBool(hash, value);
         }
 
-        void SendAnimationMessage(int stateHash, float normalizedTime, int layerId, byte[] parameters)
+        public void SetBool(int hash, bool value)
         {
-            if (isServer)
+            if (!CanWrite)
             {
-                RpcOnAnimationClientMessage(stateHash, normalizedTime, layerId, parameters);
-            }
-            else if (ClientScene.readyConnection != null)
+                Debug.LogWarning("Cannot set animator parameters when not on server!");
+                return;
+            }            
+            if (!HasParameter(hash, AnimatorControllerParameterType.Bool))
             {
-                CmdOnAnimationServerMessage(stateHash, normalizedTime, layerId, parameters);
+                Debug.LogWarning($"Parameter {name} is not a bool!");
+                return;
             }
-        }
 
-        void SendAnimationParametersMessage(byte[] parameters)
-        {
-            if (isServer)
-            {
-                RpcOnAnimationParametersClientMessage(parameters);
-            }
-            else if (ClientScene.readyConnection != null)
-            {
-                CmdOnAnimationParametersServerMessage(parameters);
-            }
-        }
-
-        void HandleAnimMsg(int stateHash, float normalizedTime, int layerId, NetworkReader reader)
-        {
-            if (hasAuthority && clientAuthority)
+            bool hasChanged = bools[hash] != value;
+            if (!hasChanged)
                 return;
 
-            // usually transitions will be triggered by parameters, if not, play anims directly.
-            // NOTE: this plays "animations", not transitions, so any transitions will be skipped.
-            // NOTE: there is no API to play a transition(?)
-            if (stateHash != 0)
-            {
-                animator.Play(stateHash, layerId, normalizedTime);
-            }
+            ulong mask = hashToMask[hash];
 
-            ReadParameters(reader);
+            bools[hash] = value;
+
+            SetDirtyBit(mask);
+
+            Animator.SetBool(hash, value);
         }
 
-        void HandleAnimParamsMsg(NetworkReader reader)
+        public void SetTrigger(string name)
         {
-            if (hasAuthority && clientAuthority)
+            SetTrigger(Animator.StringToHash(name));
+        }
+
+        public void SetTrigger(int hash)
+        {
+            if (!CanWrite)
+            {
+                Debug.LogWarning("Cannot set animator parameters when not on server!");
+                return;
+            }
+
+            // Note: since triggers aren't tracked, this assumes that the hash is valid. If it isn't valid, Unity will log a warning
+            // that no parameter was found for that hash.
+
+            // Play locally on server.
+            Animator.SetTrigger(hash);
+
+            // Let all clients know to play it too.
+            RpcSetTrigger(hash);
+        }
+
+        [ClientRpc]
+        private void RpcSetTrigger(int hash)
+        {
+            if (isServer) // Don't play on server!
                 return;
 
-            ReadParameters(reader);
+            // Play on local animator!
+            Animator.SetTrigger(hash);
         }
 
-        void HandleAnimTriggerMsg(int hash)
-        {
-            animator.SetTrigger(hash);
-        }
-
-        ulong NextDirtyBits()
-        {
-            ulong dirtyBits = 0;
-            for (int i = 0; i < parameters.Length; i++)
-            {
-                AnimatorControllerParameter par = parameters[i];
-                bool changed = false;
-                if (par.type == AnimatorControllerParameterType.Int)
-                {
-                    int newIntValue = animator.GetInteger(par.nameHash);
-                    changed = newIntValue != lastIntParameters[i];
-                    if (changed)
-                    {
-                        lastIntParameters[i] = newIntValue;
-                    }
-                }
-                else if (par.type == AnimatorControllerParameterType.Float)
-                {
-                    float newFloatValue = animator.GetFloat(par.nameHash);
-                    changed = Mathf.Abs(newFloatValue - lastFloatParameters[i]) > 0.001f;
-                    if (changed)
-                    {
-                        lastFloatParameters[i] = newFloatValue;
-                    }
-                }
-                else if (par.type == AnimatorControllerParameterType.Bool)
-                {
-                    bool newBoolValue = animator.GetBool(par.nameHash);
-                    changed = newBoolValue != lastBoolParameters[i];
-                    if (changed)
-                    {
-                        lastBoolParameters[i] = newBoolValue;
-                    }
-                }
-                if (changed)
-                {
-                    dirtyBits |= 1ul << i;
-                }
-            }
-            return dirtyBits;
-        }
-
-        bool WriteParameters(NetworkWriter writer, bool forceAll = false)
-        {
-            ulong dirtyBits = forceAll ? (~0ul) : NextDirtyBits();
-            writer.WritePackedUInt64(dirtyBits);
-            for (int i = 0; i < parameters.Length; i++)
-            {
-                if ((dirtyBits & (1ul << i)) == 0)
-                    continue;
-
-                AnimatorControllerParameter par = parameters[i];
-                if (par.type == AnimatorControllerParameterType.Int)
-                {
-                    int newIntValue = animator.GetInteger(par.nameHash);
-                    writer.WritePackedInt32(newIntValue);
-                }
-                else if (par.type == AnimatorControllerParameterType.Float)
-                {
-                    float newFloatValue = animator.GetFloat(par.nameHash);
-                    writer.WriteSingle(newFloatValue);
-                }
-                else if (par.type == AnimatorControllerParameterType.Bool)
-                {
-                    bool newBoolValue = animator.GetBool(par.nameHash);
-                    writer.WriteBoolean(newBoolValue);
-                }
-            }
-            return dirtyBits != 0;
-        }
-
-        void ReadParameters(NetworkReader reader)
-        {
-            ulong dirtyBits = reader.ReadPackedUInt64();
-            for (int i = 0; i < parameters.Length; i++)
-            {
-                if ((dirtyBits & (1ul << i)) == 0)
-                    continue;
-
-                AnimatorControllerParameter par = parameters[i];
-                if (par.type == AnimatorControllerParameterType.Int)
-                {
-                    int newIntValue = reader.ReadPackedInt32();
-                    animator.SetInteger(par.nameHash, newIntValue);
-                }
-                else if (par.type == AnimatorControllerParameterType.Float)
-                {
-                    float newFloatValue = reader.ReadSingle();
-                    animator.SetFloat(par.nameHash, newFloatValue);
-                }
-                else if (par.type == AnimatorControllerParameterType.Bool)
-                {
-                    bool newBoolValue = reader.ReadBoolean();
-                    animator.SetBool(par.nameHash, newBoolValue);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Custom Serialization
-        /// </summary>
-        /// <param name="writer"></param>
-        /// <param name="initialState"></param>
-        /// <returns></returns>
         public override bool OnSerialize(NetworkWriter writer, bool initialState)
         {
             if (initialState)
             {
-                for (int i = 0; i < animator.layerCount; i++)
+                // Write number of dirty variables, in this case all of them are considered dirty.
+                writer.WriteByte((byte)hashToType.Count);
+
+                // Write all.
+                foreach (var pair in hashToType)
                 {
-                    if (animator.IsInTransition(i))
+                    int hash = pair.Key;
+                    var type = pair.Value;
+
+                    writer.WriteInt32(hash);
+
+                    switch (type)
                     {
-                        AnimatorStateInfo st = animator.GetNextAnimatorStateInfo(i);
-                        writer.WriteInt32(st.fullPathHash);
-                        writer.WriteSingle(st.normalizedTime);
-                    }
-                    else
-                    {
-                        AnimatorStateInfo st = animator.GetCurrentAnimatorStateInfo(i);
-                        writer.WriteInt32(st.fullPathHash);
-                        writer.WriteSingle(st.normalizedTime);
+                        case AnimatorControllerParameterType.Float:
+                            writer.WriteSingle(floats[hash]);
+                            break;
+                        case AnimatorControllerParameterType.Int:
+                            writer.WriteInt32(ints[hash]);
+                            break;
+                        case AnimatorControllerParameterType.Bool:
+                            writer.WriteBoolean(bools[hash]);
+                            break;
                     }
                 }
-                WriteParameters(writer, initialState);
-                return true;
             }
-            return false;
+            else
+            {
+                ulong dirtyMask = this.syncVarDirtyBits;
+
+                // Count the number of dirty variables and write that number to stream.
+                byte dirtyCount = 0;
+                for (int i = 0; i < 64; i++)
+                {
+                    ulong mask = 1UL << i;
+                    bool isOne = (dirtyMask & mask) == mask;
+
+                    if (isOne)
+                        dirtyCount++;
+                }
+                writer.WriteByte(dirtyCount);
+
+                // Write only changed variables.
+                for (int i = 0; i < hashToType.Count; i++)
+                {
+                    ulong mask = 1UL << i;
+
+                    bool changed = (dirtyMask & mask) == mask;
+
+                    if (changed)
+                    {
+                        int hash = maskToHash[mask];
+                        var type = hashToType[hash];
+
+                        writer.WriteInt32(hash);
+                        switch (type)
+                        {
+                            case AnimatorControllerParameterType.Float:
+                                writer.WriteSingle(floats[hash]);
+                                break;
+                            case AnimatorControllerParameterType.Int:
+                                writer.WriteInt32(ints[hash]);
+                                break;
+                            case AnimatorControllerParameterType.Bool:
+                                writer.WriteBoolean(bools[hash]);
+                                break;
+                        }
+                    }
+                }
+
+            }
+
+            return true;
         }
 
-        /// <summary>
-        /// Custom Deserialization
-        /// </summary>
-        /// <param name="reader"></param>
-        /// <param name="initialState"></param>
         public override void OnDeserialize(NetworkReader reader, bool initialState)
         {
-            if (initialState)
+            // Does not matter if it is initial state or not, reading is the same.
+            byte count = reader.ReadByte();
+
+            for (int i = 0; i < count; i++)
             {
-                for (int i = 0; i < animator.layerCount; i++)
+                int hash = reader.ReadInt32();
+                var type = hashToType[hash];
+
+                switch (type)
                 {
-                    int stateHash = reader.ReadInt32();
-                    float normalizedTime = reader.ReadSingle();
-                    animator.Play(stateHash, i, normalizedTime);
+                    case AnimatorControllerParameterType.Float:
+                        float valFloat = reader.ReadSingle();
+                        // Write this to the client.
+                        Animator.SetFloat(hash, valFloat);
+                        break;
+                    case AnimatorControllerParameterType.Int:
+                        int valInt = reader.ReadInt32();
+                        Animator.SetInteger(hash, valInt);
+                        break;
+                    case AnimatorControllerParameterType.Bool:
+                        bool valBool = reader.ReadBoolean();
+                        Animator.SetBool(hash, valBool);
+                        break;
                 }
-
-                ReadParameters(reader);
             }
         }
-
-        /// <summary>
-        /// Causes an animation trigger to be invoked for a networked object.
-        /// <para>If local authority is set, and this is called from the client, then the trigger will be invoked on the server and all clients. If not, then this is called on the server, and the trigger will be called on all clients.</para>
-        /// </summary>
-        /// <param name="triggerName">Name of trigger.</param>
-        public void SetTrigger(string triggerName)
-        {
-            SetTrigger(Animator.StringToHash(triggerName));
-        }
-
-        /// <summary>
-        /// Causes an animation trigger to be invoked for a networked object.
-        /// </summary>
-        /// <param name="hash">Hash id of trigger (from the Animator).</param>
-        public void SetTrigger(int hash)
-        {
-            if (hasAuthority && clientAuthority)
-            {
-                if (ClientScene.readyConnection != null)
-                {
-                    CmdOnAnimationTriggerServerMessage(hash);
-                }
-                return;
-            }
-
-            if (isServer && !clientAuthority)
-            {
-                RpcOnAnimationTriggerClientMessage(hash);
-            }
-        }
-
-        #region server message handlers
-        [Command]
-        void CmdOnAnimationServerMessage(int stateHash, float normalizedTime, int layerId, byte[] parameters)
-        {
-            if (LogFilter.Debug) Debug.Log("OnAnimationMessage for netId=" + netId);
-
-            // handle and broadcast
-            HandleAnimMsg(stateHash, normalizedTime, layerId, new NetworkReader(parameters));
-            RpcOnAnimationClientMessage(stateHash, normalizedTime, layerId, parameters);
-        }
-
-        [Command]
-        void CmdOnAnimationParametersServerMessage(byte[] parameters)
-        {
-            // handle and broadcast
-            HandleAnimParamsMsg(new NetworkReader(parameters));
-            RpcOnAnimationParametersClientMessage(parameters);
-        }
-
-        [Command]
-        void CmdOnAnimationTriggerServerMessage(int hash)
-        {
-            // handle and broadcast
-            HandleAnimTriggerMsg(hash);
-            RpcOnAnimationTriggerClientMessage(hash);
-        }
-        #endregion
-
-        #region client message handlers
-        [ClientRpc]
-        void RpcOnAnimationClientMessage(int stateHash, float normalizedTime, int layerId, byte[] parameters)
-        {
-            HandleAnimMsg(stateHash, normalizedTime, layerId, new NetworkReader(parameters));
-        }
-
-        [ClientRpc]
-        void RpcOnAnimationParametersClientMessage(byte[] parameters)
-        {
-            HandleAnimParamsMsg(new NetworkReader(parameters));
-        }
-
-        // server sends this to one client
-        [ClientRpc]
-        void RpcOnAnimationTriggerClientMessage(int hash)
-        {
-            HandleAnimTriggerMsg(hash);
-        }
-        #endregion
     }
 }

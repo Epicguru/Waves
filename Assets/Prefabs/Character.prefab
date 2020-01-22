@@ -302,7 +302,7 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   Name: James
-  StartingItem: {fileID: 7820446925516662997, guid: 870452c29a3f1ab4ab31a6a2b34fa3d5,
+  StartingItem: {fileID: 1624724944245375847, guid: 9e63932cf8d021541b7186f50fd9323b,
     type: 3}
   ToMoveInto: {fileID: 0}
 --- !u!114 &5096844400294508736

@@ -15,16 +15,6 @@ public class MeleeWeapon : NetworkBehaviour
         }
     }
     private Item _item;
-    public Animator Animator
-    {
-        get
-        {
-            if (_anim == null)
-                _anim = GetComponentInChildren<Animator>();
-            return _anim;
-        }
-    }
-    private Animator _anim;
     public NetworkAnimator NetworkAnimator
     {
         get
@@ -72,7 +62,7 @@ public class MeleeWeapon : NetworkBehaviour
         }
 
         // Update animator: moving state. This is automatically synced to clients.
-        Animator.SetBool("Move", Item.Character?.Movement.IsMoving ?? false);
+        NetworkAnimator.SetBool("Move", Item.Character?.Movement.IsMoving ?? false);
     }
 
     [Client]

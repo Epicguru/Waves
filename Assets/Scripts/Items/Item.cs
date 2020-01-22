@@ -27,6 +27,11 @@ public class Item : NetworkBehaviour
     [SyncVar]
     public string Name = "My Item Name";
 
+    private void Awake()
+    {
+        syncInterval = 0f;
+    }
+
     private void Update()
     {
         if (IsHeld)

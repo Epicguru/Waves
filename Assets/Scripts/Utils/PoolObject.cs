@@ -147,6 +147,11 @@ public class PoolObject : MonoBehaviour
             Despawn(comp);
     }
 
+    public void Despawn()
+    {
+        PoolObject.Despawn(this);
+    }
+
     private void InvokeUponSpawn()
     {
         if (UponSpawn != null)
